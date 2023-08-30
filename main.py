@@ -1,54 +1,34 @@
-# from fastapi import FastAPI
-
-# app = FastAPI()
-print('1')
-# audio_path_wav = "./assets/kami-sankaku-native-mono.wav"
-
-# @app.get("/")
-# async def root():
-#     return {"message": "Hello World"}
+from fastapi import FastAPI, UploadFile, File
+from pitch_analysis import get_pitch
+import numpy as np
+import os
 
 
-import torchcrepe
+app = FastAPI()
 
-print(2)
-
-
-# audio, sr = torchcrepe.load.audio("./assets/kami-sankaku-native-mono.wav")
-audio, sr = torchcrepe.load.audio("./assets/YIN_pitch_detection_singer.wav")
-print(3)
-print(f'audio {audio}')
-print(f'sr {sr}')
-
-# Here we'll use a 5 millisecond hop length
-hop_length = int(sr / 200.)
-print(4)
-print(f'hop_length {hop_length}')
-
-fmin = 50
-fmax = 550
-print(5)
-
-model = 'tiny'
-
-print(6)
-# device = 'cuda:0'
-device = 'cpu'
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
 
 
-print(7)
-batch_size = 2048
+@app.post("/pitch")
+async def analyze_pitch(file: UploadFile):
+    
+    # Save the uploaded file temporarily
+    with open("./assets/temp.wav", "wb") as temp_file:
+        temp_file.write(file.file.read())
 
-print(8)
+    # Call the get_pitch function with the saved file
+    pitch_list, confidence_list = get_pitch("./assets/temp.wav")
 
-pitch = torchcrepe.predict(audio,
-                           sr,
-                           hop_length,
-                           fmin,
-                           fmax,
-                           model,
-                           batch_size=batch_size,
-                           device=device)
+    # Clean up the temporary file (optional)
 
-print(9)
-print(pitch)
+    os.remove("./assets/temp.wav")
+    # Convert pitch_list (tensor) to a NumPy array
+    pitch_np_array = np.array(pitch_list)
+    pitch_array = pitch_np_array.tolist()
+
+    response = {"pitch": pitch_array, "confidence": confidence_list}
+    print(response)
+    
+    return response
